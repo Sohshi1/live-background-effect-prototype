@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Background Effect Prototype</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101114;
+        --panel: #191c21;
+        --panel-2: #20252b;
+        --text: #f4f6f8;
+        --muted: #a9b0b8;
+        --line: #343b44;
+        --accent: #7ce0c3;
+        --accent-2: #ffd166;
+        --danger: #ff6b6b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        min-height: 100vh;
+      }
+
+      .stage {
+        position: relative;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        overflow: hidden;
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          #0c0d10;
+        background-size: 48px 48px;
+      }
+
+      .stage-inner {
+        width: min(100%, 1180px);
+        aspect-ratio: 16 / 9;
+        position: relative;
+        border: 1px solid var(--line);
+        background: #050608;
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
+      }
+
+      canvas#output {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      video {
+        display: none;
+      }
+
+      .empty-state {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 32px;
+        color: var(--muted);
+        text-align: center;
+        line-height: 1.7;
+        pointer-events: none;
+      }
+
+      .status {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .pill {
+        min-height: 30px;
+        padding: 6px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(0, 0, 0, 0.5);
+        color: #eef3f5;
+        border-radius: 6px;
+        font-size: 12px;
+        backdrop-filter: blur(12px);
+      }
+
+      .panel {
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+        padding: 22px;
+        overflow-y: auto;
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        font-size: 19px;
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        margin: 0 0 22px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .section {
+        padding: 18px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .section:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .section-title {
+        margin: 0 0 12px;
+        font-size: 13px;
+        color: #dce2e6;
+        font-weight: 700;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .control {
+        display: grid;
+        gap: 7px;
+        margin: 12px 0;
+      }
+
+      label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      input[type="file"] {
+        width: 100%;
+        min-height: 42px;
+        padding: 8px;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        border-radius: 6px;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+
+      select {
+        min-height: 40px;
+        width: 100%;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 0 10px;
+      }
+
+      button {
+        min-height: 38px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 0 12px;
+        cursor: pointer;
+      }
+
+      button.primary {
+        border-color: rgba(124, 224, 195, 0.4);
+        background: #12352e;
+        color: #dffbf3;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .toggle input {
+        width: 17px;
+        height: 17px;
+        accent-color: var(--accent);
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .metric {
+        min-height: 62px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        border-radius: 6px;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 18px;
+        font-weight: 760;
+      }
+
+      .log {
+        min-height: 58px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        background: #121519;
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      @media (max-width: 980px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .panel {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+
+        .stage {
+          min-height: 52vh;
+          padding: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="stage" aria-label="preview">
+        <div class="stage-inner">
+          <canvas id="output" width="1280" height="720"></canvas>
+          <div class="empty-state" id="emptyState">
+            動画ファイルを選ぶか、カメラを開始してください。
+          </div>
+          <div class="status">
+            <span class="pill" id="modelStatus">MediaPipeを読み込み中</span>
+            <span class="pill" id="sourceStatus">入力なし</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <h1>Background Effect Prototype</h1>
+        <p class="subtitle">
+          MediaPipeの人物マスクを使い、人物を避けて背景だけに演出を重ねる検証用デモ。
+        </p>
+
+        <section class="section">
+          <p class="section-title">Input</p>
+          <div class="control">
+            <label for="fileInput">Video file</label>
+            <input id="fileInput" type="file" accept="video/*" />
+          </div>
+          <div class="row">
+            <button class="primary" id="cameraButton" type="button">Camera</button>
+            <button id="playButton" type="button" disabled>Play/Pause</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <p class="section-title">Effect</p>
+          <div class="control">
+            <label for="effectSelect">Type</label>
+            <select id="effectSelect">
+              <option value="particles">Particles</option>
+              <option value="aurora">Aurora</option>
+              <option value="pulse">Pulse</option>
+            </select>
+          </div>
+          <div class="control">
+            <label for="intensityRange">Intensity <span id="intensityValue">70</span></label>
+            <input id="intensityRange" type="range" min="0" max="100" value="70" />
+          </div>
+          <div class="control">
+            <label for="softnessRange">Mask softness <span id="softnessValue">10</span></label>
+            <input id="softnessRange" type="range" min="0" max="24" value="10" />
+          </div>
+          <label class="toggle">
+            <input id="faceToggle" type="checkbox" checked />
+            Show face detection
+          </label>
+        </section>
+
+        <section class="section">
+          <p class="section-title">Metrics</p>
+          <div class="metrics">
+            <div class="metric"><span>Render FPS</span><strong id="fpsMetric">0</strong></div>
+            <div class="metric"><span>Segmentation</span><strong id="segMetric">0ms</strong></div>
+            <div class="metric"><span>Faces</span><strong id="faceMetric">0</strong></div>
+            <div class="metric"><span>Mask</span><strong id="maskMetric">-</strong></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <p class="section-title">Log</p>
+          <div class="log" id="logBox">初期化中です。</div>
+        </section>
+      </aside>
+    </main>
+
+    <video id="video" playsinline muted></video>
+
+    <script type="module">
+      import {
+        FaceDetector,
+        FilesetResolver,
+        ImageSegmenter
+      } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest";
+
+      const MODEL_ROOT = "https://storage.googleapis.com/mediapipe-models";
+      const WASM_ROOT = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm";
+      const SEGMENTER_MODEL =
+        `${MODEL_ROOT}/image_segmenter/selfie_segmenter_landscape/float16/latest/selfie_segmenter_landscape.tflite`;
+      const FACE_MODEL =
+        `${MODEL_ROOT}/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite`;
+
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("output");
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const emptyState = document.getElementById("emptyState");
+      const modelStatus = document.getElementById("modelStatus");
+      const sourceStatus = document.getElementById("sourceStatus");
+      const fileInput = document.getElementById("fileInput");
+      const cameraButton = document.getElementById("cameraButton");
+      const playButton = document.getElementById("playButton");
+      const effectSelect = document.getElementById("effectSelect");
+      const intensityRange = document.getElementById("intensityRange");
+      const intensityValue = document.getElementById("intensityValue");
+      const softnessRange = document.getElementById("softnessRange");
+      const softnessValue = document.getElementById("softnessValue");
+      const faceToggle = document.getElementById("faceToggle");
+      const fpsMetric = document.getElementById("fpsMetric");
+      const segMetric = document.getElementById("segMetric");
+      const faceMetric = document.getElementById("faceMetric");
+      const maskMetric = document.getElementById("maskMetric");
+      const logBox = document.getElementById("logBox");
+
+      const effectCanvas = document.createElement("canvas");
+      const effectCtx = effectCanvas.getContext("2d");
+      const maskCanvas = document.createElement("canvas");
+      const maskCtx = maskCanvas.getContext("2d");
+      const maskFullCanvas = document.createElement("canvas");
+      const maskFullCtx = maskFullCanvas.getContext("2d");
+
+      let segmenter = null;
+      let faceDetector = null;
+      let stream = null;
+      let currentObjectUrl = null;
+      let rafId = 0;
+      let hasMask = false;
+      let faces = [];
+      let lastVideoTime = -1;
+      let lastFaceTime = 0;
+      let lastFrameAt = performance.now();
+      let fpsAverage = 0;
+      let particles = createParticles(170);
+
+      intensityRange.addEventListener("input", () => {
+        intensityValue.textContent = intensityRange.value;
+      });
+
+      softnessRange.addEventListener("input", () => {
+        softnessValue.textContent = softnessRange.value;
+        refreshFullMask();
+      });
+
+      fileInput.addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        stopCamera();
+        if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = URL.createObjectURL(file);
+        video.srcObject = null;
+        video.src = currentObjectUrl;
+        video.loop = true;
+        await video.play();
+        startPreview(`動画: ${file.name}`);
+      });
+
+      cameraButton.addEventListener("click", async () => {
+        stopCamera();
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false
+          });
+          if (currentObjectUrl) {
+            URL.revokeObjectURL(currentObjectUrl);
+            currentObjectUrl = null;
+          }
+          video.src = "";
+          video.srcObject = stream;
+          await video.play();
+          startPreview("カメラ入力");
+        } catch (error) {
+          writeLog(`カメラを開始できませんでした: ${error.message}`);
+        }
+      });
+
+      playButton.addEventListener("click", async () => {
+        if (video.paused) {
+          await video.play();
+        } else {
+          video.pause();
+        }
+      });
+
+      init();
+
+      async function init() {
+        drawIdle();
+        try {
+          const vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
+          segmenter = await createSegmenter(vision);
+          faceDetector = await createFaceDetector(vision);
+          modelStatus.textContent = "MediaPipe ready";
+          writeLog("MediaPipeの人物セグメンテーションと顔検出を読み込みました。");
+        } catch (error) {
+          modelStatus.textContent = "Load error";
+          modelStatus.style.color = "var(--danger)";
+          writeLog(`MediaPipeの読み込みに失敗しました: ${error.message}`);
+        }
+      }
+
+      async function createSegmenter(vision) {
+        const options = {
+          baseOptions: {
+            modelAssetPath: SEGMENTER_MODEL,
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          outputCategoryMask: true,
+          outputConfidenceMasks: true
+        };
+
+        try {
+          return await ImageSegmenter.createFromOptions(vision, options);
+        } catch (error) {
+          writeLog("GPU delegateで初期化できなかったためCPUで再試行します。");
+          options.baseOptions.delegate = "CPU";
+          return ImageSegmenter.createFromOptions(vision, options);
+        }
+      }
+
+      async function createFaceDetector(vision) {
+        const options = {
+          baseOptions: {
+            modelAssetPath: FACE_MODEL,
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          minDetectionConfidence: 0.45
+        };
+
+        try {
+          return await FaceDetector.createFromOptions(vision, options);
+        } catch (error) {
+          options.baseOptions.delegate = "CPU";
+          return FaceDetector.createFromOptions(vision, options);
+        }
+      }
+
+      function startPreview(label) {
+        emptyState.style.display = "none";
+        sourceStatus.textContent = label;
+        playButton.disabled = false;
+        hasMask = false;
+        faces = [];
+        lastVideoTime = -1;
+        resizeCanvases();
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(render);
+      }
+
+      function render(now) {
+        rafId = requestAnimationFrame(render);
+
+        if (video.readyState < 2) {
+          drawIdle();
+          return;
+        }
+
+        resizeCanvases();
+        updateFps(now);
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        if (segmenter && video.currentTime !== lastVideoTime) {
+          runSegmentation(now);
+          lastVideoTime = video.currentTime;
+        }
+
+        if (faceDetector && faceToggle.checked && now - lastFaceTime > 160) {
+          runFaceDetection(now);
+          lastFaceTime = now;
+        } else if (!faceToggle.checked) {
+          faces = [];
+        }
+
+        drawEffectLayer(now);
+        ctx.drawImage(effectCanvas, 0, 0, canvas.width, canvas.height);
+        drawFaceBoxes();
+      }
+
+      function runSegmentation(timestamp) {
+        const startedAt = performance.now();
+        try {
+          segmenter.segmentForVideo(video, timestamp, (result) => {
+            updateMask(result);
+            const elapsed = performance.now() - startedAt;
+            segMetric.textContent = `${Math.round(elapsed)}ms`;
+            closeMasks(result);
+          });
+        } catch (error) {
+          writeLog(`セグメンテーションでエラー: ${error.message}`);
+        }
+      }
+
+      function runFaceDetection(timestamp) {
+        try {
+          const result = faceDetector.detectForVideo(video, timestamp);
+          faces = result?.detections ?? [];
+          faceMetric.textContent = String(faces.length);
+        } catch (error) {
+          faces = [];
+          faceMetric.textContent = "0";
+        }
+      }
+
+      function updateMask(result) {
+        const confidenceMask = result.confidenceMasks?.[1] ?? result.confidenceMasks?.[0];
+        const categoryMask = result.categoryMask;
+        const sourceMask = confidenceMask ?? categoryMask;
+        if (!sourceMask) return;
+
+        const width = sourceMask.width;
+        const height = sourceMask.height;
+        const isFloat = Boolean(sourceMask.getAsFloat32Array);
+        const data = isFloat
+          ? sourceMask.getAsFloat32Array()
+          : sourceMask.getAsUint8Array();
+
+        if (maskCanvas.width !== width || maskCanvas.height !== height) {
+          maskCanvas.width = width;
+          maskCanvas.height = height;
+        }
+
+        const imageData = maskCtx.createImageData(width, height);
+        for (let i = 0, j = 0; i < data.length; i += 1, j += 4) {
+          const person = isFloat ? data[i] : data[i] === 1 ? 1 : 0;
+          const protectedPerson = smoothstep(0.25, 0.78, person);
+          const backgroundAlpha = Math.max(0, Math.min(1, 1 - protectedPerson));
+          imageData.data[j] = 255;
+          imageData.data[j + 1] = 255;
+          imageData.data[j + 2] = 255;
+          imageData.data[j + 3] = Math.round(backgroundAlpha * 255);
+        }
+        maskCtx.putImageData(imageData, 0, 0);
+        hasMask = true;
+        maskMetric.textContent = `${width}x${height}`;
+        refreshFullMask();
+      }
+
+      function refreshFullMask() {
+        if (!hasMask || !canvas.width || !canvas.height) return;
+        maskFullCtx.clearRect(0, 0, maskFullCanvas.width, maskFullCanvas.height);
+        maskFullCtx.save();
+        maskFullCtx.filter = `blur(${Number(softnessRange.value)}px)`;
+        maskFullCtx.drawImage(maskCanvas, 0, 0, maskFullCanvas.width, maskFullCanvas.height);
+        maskFullCtx.restore();
+      }
+
+      function drawEffectLayer(now) {
+        const width = canvas.width;
+        const height = canvas.height;
+        const opacity = Number(intensityRange.value) / 100;
+
+        effectCtx.clearRect(0, 0, width, height);
+        effectCtx.save();
+        effectCtx.globalAlpha = opacity;
+
+        if (effectSelect.value === "aurora") {
+          drawAurora(now, width, height);
+        } else if (effectSelect.value === "pulse") {
+          drawPulse(now, width, height);
+        } else {
+          drawParticles(now, width, height);
+        }
+
+        effectCtx.restore();
+
+        if (hasMask) {
+          effectCtx.save();
+          effectCtx.globalCompositeOperation = "destination-in";
+          effectCtx.drawImage(maskFullCanvas, 0, 0, width, height);
+          effectCtx.restore();
+        } else {
+          effectCtx.globalAlpha = 0.25;
+        }
+      }
+
+      function drawParticles(now, width, height) {
+        const t = now * 0.001;
+        effectCtx.globalCompositeOperation = "lighter";
+        for (const p of particles) {
+          const x = (p.x + Math.sin(t * p.drift + p.seed) * 0.015) * width;
+          const y = ((p.y - t * p.speed) % 1 + 1) % 1 * height;
+          const radius = p.size * Math.min(width, height);
+          const grad = effectCtx.createRadialGradient(x, y, 0, x, y, radius * 5);
+          grad.addColorStop(0, `rgba(255, ${190 + p.warm * 50}, 120, 0.95)`);
+          grad.addColorStop(0.35, `rgba(124, 224, 195, 0.35)`);
+          grad.addColorStop(1, "rgba(124, 224, 195, 0)");
+          effectCtx.fillStyle = grad;
+          effectCtx.beginPath();
+          effectCtx.arc(x, y, radius * 5, 0, Math.PI * 2);
+          effectCtx.fill();
+        }
+      }
+
+      function drawAurora(now, width, height) {
+        const t = now * 0.001;
+        effectCtx.globalCompositeOperation = "screen";
+        for (let i = 0; i < 4; i += 1) {
+          const y = height * (0.18 + i * 0.18 + Math.sin(t * 0.6 + i) * 0.04);
+          const grad = effectCtx.createLinearGradient(0, y - 90, width, y + 90);
+          grad.addColorStop(0, "rgba(92, 214, 255, 0)");
+          grad.addColorStop(0.35, "rgba(124, 224, 195, 0.38)");
+          grad.addColorStop(0.68, "rgba(255, 209, 102, 0.28)");
+          grad.addColorStop(1, "rgba(255, 255, 255, 0)");
+          effectCtx.strokeStyle = grad;
+          effectCtx.lineWidth = 70 + i * 18;
+          effectCtx.beginPath();
+          for (let x = -40; x <= width + 40; x += 36) {
+            const wave = Math.sin(x * 0.006 + t * (0.8 + i * 0.12)) * height * 0.055;
+            if (x === -40) effectCtx.moveTo(x, y + wave);
+            else effectCtx.lineTo(x, y + wave);
+          }
+          effectCtx.stroke();
+        }
+      }
+
+      function drawPulse(now, width, height) {
+        const t = now * 0.001;
+        effectCtx.globalCompositeOperation = "screen";
+        const base = effectCtx.createLinearGradient(0, 0, width, height);
+        base.addColorStop(0, "rgba(124, 224, 195, 0.12)");
+        base.addColorStop(0.45, "rgba(255, 209, 102, 0.18)");
+        base.addColorStop(1, "rgba(98, 168, 255, 0.13)");
+        effectCtx.fillStyle = base;
+        effectCtx.fillRect(0, 0, width, height);
+
+        for (let i = 0; i < 5; i += 1) {
+          const progress = ((t * 0.22 + i / 5) % 1);
+          const radius = progress * Math.max(width, height) * 0.92;
+          const alpha = 1 - progress;
+          effectCtx.strokeStyle = `rgba(255, 209, 102, ${alpha * 0.55})`;
+          effectCtx.lineWidth = 2 + alpha * 10;
+          effectCtx.beginPath();
+          effectCtx.arc(width / 2, height / 2, radius, 0, Math.PI * 2);
+          effectCtx.stroke();
+        }
+      }
+
+      function drawFaceBoxes() {
+        if (!faces.length || !faceToggle.checked) return;
+        const xScale = canvas.width / video.videoWidth;
+        const yScale = canvas.height / video.videoHeight;
+        ctx.save();
+        ctx.lineWidth = Math.max(2, canvas.width / 640);
+        ctx.font = `${Math.max(12, canvas.width / 90)}px ui-sans-serif`;
+        for (const detection of faces) {
+          const box = detection.boundingBox;
+          if (!box) continue;
+          const x = (box.originX ?? box.origin_x ?? 0) * xScale;
+          const y = (box.originY ?? box.origin_y ?? 0) * yScale;
+          const w = box.width * xScale;
+          const h = box.height * yScale;
+          const score = detection.categories?.[0]?.score ?? 0;
+          ctx.strokeStyle = "rgba(124, 224, 195, 0.92)";
+          ctx.fillStyle = "rgba(124, 224, 195, 0.14)";
+          ctx.beginPath();
+          ctx.rect(x, y, w, h);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = "rgba(0, 0, 0, 0.62)";
+          ctx.fillRect(x, Math.max(0, y - 25), 84, 23);
+          ctx.fillStyle = "#dffbf3";
+          ctx.fillText(`face ${Math.round(score * 100)}%`, x + 7, Math.max(17, y - 8));
+        }
+        ctx.restore();
+      }
+
+      function resizeCanvases() {
+        const width = video.videoWidth || 1280;
+        const height = video.videoHeight || 720;
+        if (canvas.width === width && canvas.height === height) return;
+        for (const target of [canvas, effectCanvas, maskFullCanvas]) {
+          target.width = width;
+          target.height = height;
+        }
+        particles = createParticles(Math.max(110, Math.round(width / 8)));
+        refreshFullMask();
+      }
+
+      function drawIdle() {
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.fillStyle = "#050608";
+        ctx.fillRect(0, 0, width, height);
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x < width; x += 64) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        for (let y = 0; y < height; y += 64) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+      }
+
+      function updateFps(now) {
+        const delta = Math.max(1, now - lastFrameAt);
+        const fps = 1000 / delta;
+        fpsAverage = fpsAverage ? fpsAverage * 0.88 + fps * 0.12 : fps;
+        fpsMetric.textContent = String(Math.round(fpsAverage));
+        lastFrameAt = now;
+      }
+
+      function createParticles(count) {
+        return Array.from({ length: count }, () => ({
+          x: Math.random(),
+          y: Math.random(),
+          speed: 0.035 + Math.random() * 0.09,
+          drift: 0.7 + Math.random() * 1.7,
+          size: 0.0015 + Math.random() * 0.0045,
+          seed: Math.random() * Math.PI * 2,
+          warm: Math.random()
+        }));
+      }
+
+      function closeMasks(result) {
+        result.confidenceMasks?.forEach((mask) => mask.close?.());
+        result.categoryMask?.close?.();
+      }
+
+      function stopCamera() {
+        if (!stream) return;
+        stream.getTracks().forEach((track) => track.stop());
+        stream = null;
+      }
+
+      function smoothstep(edge0, edge1, x) {
+        const value = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+        return value * value * (3 - 2 * value);
+      }
+
+      function writeLog(message) {
+        logBox.textContent = message;
+      }
+    </script>
+  </body>
+</html>
